@@ -20,7 +20,10 @@ fn main() -> Result<()> {
         if target == "x86_64-pc-windows-gnu" {
             Command::new("./build/windows_ffmpeg_cross.rs").status()?;
         } else {
-            Command::new("./build/linux_ffmpeg.rs").status()?;
+            Command::new("./build/linux_ffmpeg.rs")
+                .arg("release/7.1")
+                .arg(&target)
+                .status()?;
         }
     }
 

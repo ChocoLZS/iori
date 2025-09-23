@@ -29,6 +29,9 @@ fn main() -> Result<()> {
     let branch = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "release/7.1".to_string());
+    let target = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "".to_string());
     let num_job = std::thread::available_parallelism().unwrap().get();
 
     if fs::metadata("ffmpeg").is_err() {
@@ -58,13 +61,33 @@ fn main() -> Result<()> {
         .arg("FETCH_HEAD")
         .status()?;
 
-    Command::new("./configure")
+    let mut configure_cmd = Command::new("./configure");
+    configure_cmd
         .arg(format!("--prefix={}", build_path))
         // To workaround `https://github.com/larksuite/rsmpeg/pull/98#issuecomment-1467511193`
         .arg("--disable-decoder=exr,phm")
         .arg("--disable-programs")
-        .arg("--disable-autodetect")
-        .status()?;
+        .arg("--disable-autodetect");
+
+    // Configure for musl targets
+    if target.contains("musl") {
+        if target.contains("x86_64") {
+            configure_cmd
+                .arg("--target-os=linux")
+                .arg("--arch=x86_64")
+                .arg("--cc=musl-gcc")
+                .arg("--cxx=musl-g++");
+        } else if target.contains("aarch64") {
+            configure_cmd
+                .arg("--target-os=linux")
+                .arg("--arch=aarch64")
+                .arg("--cc=aarch64-linux-musl-gcc")
+                .arg("--cxx=aarch64-linux-musl-g++")
+                .arg("--enable-cross-compile");
+        }
+    }
+
+    configure_cmd.status()?;
 
     Command::new("make")
         .arg("-j")
